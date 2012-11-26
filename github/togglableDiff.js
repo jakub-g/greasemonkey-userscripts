@@ -2,14 +2,21 @@
 // @name            GitHub toggle diff visibility per file in the commit
 // @description     Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.1
+// @version         0.1.1
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
 // @userscriptsOrg  http://userscripts.org/scripts/show/...
 // @grant           none
 // @include         http*://github.com/*/*/commit/*
+// @include         http*://github.com/*/*/pull/*
 // ==/UserScript==
+
+// Changelog:
+// 0.1
+//  initial version
+// 0.1.2
+//  includes pull requests
 
 // ============================= CONFIG ================================
 
