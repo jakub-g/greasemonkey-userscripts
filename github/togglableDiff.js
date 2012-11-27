@@ -2,7 +2,7 @@
 // @name            GitHub toggle diff visibility per file in the commit
 // @description     Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.1.1
+// @version         0.2.0
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -17,51 +17,175 @@
 //  initial version
 // 0.1.2
 //  includes pull requests
+// 0.1.3
+//  do not fire the event on child nodes
+// 0.1.4
+//  fire intelligently on some child nodes
+// 0.2.0
+//  'expand all' / 'collapse all' button
+//  auto hiding on long diff
+//  code refactor
 
 // ============================= CONFIG ================================
 
-// If there's more than N commits in the diff, automatically hide them all.
+// If there's more than N commits in the diff, automatically collapse them all.
 // Use 0 to disable that feature.
-let hideAllWhenMoreThanCommits = 5;
+var hideAllWhenMoreThanFiles = 10;
+
+// Automatically collapse entries that have changed more than N lines.
+var hideFileWhenDiffGt = 30;
+
+// Do not do any of above if small number of files changed in that commit
+var dontHideUnlessMoreThanFiles = 2;
 
 // ============================== CODE =================================
 
-let mainDiffDiv = document.getElementById('files');
-let children = mainDiffDiv.children;
-let nbOfCommits = children.length;
-let hideMode = false;
+var attachListeners = function() {
 
-if(hideAllWhenMoreThanCommits > 0 && nbOfCommits > hideAllWhenMoreThanCommits){
-    hideMode = true;
-}
+    /**
+     * @param elem element to be toggled upon clicking
+     * @param bStrictTarget whether the event listener should fire only on its strict target or also children
+     */
+    let getHandler = function(elem, bStrictTarget) {
+        return function(evt){
+            if(bStrictTarget){
+                if (evt.currentTarget != evt.target) {
+                    // don't want to trigger the event when clicking on "View file" or "Show comment"
+                    return;
+                }
+            }
 
-// dev note: let vs var is crucial below here in the loop, as 'children' is a live collection...
-for(var i=0, ii = nbOfCommits; i<ii; i++) {
-    let child = children[i];
-    if(child.id && child.id.indexOf('diff-') == -1){
-        continue;
-    }
-    let diffContainer = child; // document.getElementById('diff-1');
-    console.log(diffContainer);
-    let diffContainerHeader = diffContainer.children[0];
-    let diffContainerBody = diffContainer.children[1];
+            let currDisplay = elem.style.display;
+            if(currDisplay === 'none') {
+                elem.style.display = 'block';
+            } else {
+                elem.style.display = 'none';
+            }
+        };
+    };
 
-    diffContainer.style.cursor = 'pointer';
+    let mainDiffDiv = document.getElementById('files');
+    let children = mainDiffDiv.children;
+    let nbOfCommits = children.length;
 
-    diffContainerHeader.addEventListener('click', function(){
-        let currDisplay = diffContainerBody.style.display;
-        //console.log(currDisplay);
-        if(currDisplay === 'none'){
-            //diffContainerBody.style.border = '2px solid red';
-            diffContainerBody.style.display = 'block';
+    // dev note: let vs var is crucial below here in the loop, as 'children' is a live collection...
+    for(let i=0, ii = nbOfCommits; i<ii; i++) {
+        let child = children[i];
+        if(!child.id || child.id.indexOf('diff-') == -1){
+            continue;
         }
-        else{
-            //diffContainerBody.style.border = '2px solid blue';
+        let diffContainer = child; // document.getElementById('diff-1');
+
+        // We want the evt to fire on the header and some, but not all of the children...
+        let diffContainerHeader = diffContainer.children[0];
+        let diffContainerFileNameHeader = diffContainerHeader.children[0];
+
+        let diffContainerBody = diffContainer.children[1];
+
+        let handler1 = getHandler(diffContainerBody, false);
+        let handler2 = getHandler(diffContainerBody, true);
+
+        diffContainerFileNameHeader.addEventListener('click', handler1, false);
+        diffContainerHeader.addEventListener('click', handler2, true);
+        diffContainerHeader.style.cursor = 'pointer';
+    }
+};
+
+var toggleDisplayAll = function(bVisible) {
+
+    let mainDiffDiv = document.getElementById('files');
+    let children = mainDiffDiv.children;
+    let nbOfCommits = children.length;
+
+    let newDisplay = bVisible ? 'block' : 'none';
+
+    for(var i=0, ii = nbOfCommits; i<ii; i++) {
+        let child = children[i];
+        if(!child.id || child.id.indexOf('diff-') == -1){
+            continue;
+        }
+
+        let diffContainer = child;
+        let diffContainerBody = diffContainer.children[1];
+
+        diffContainerBody.style.display = newDisplay;
+    }
+};
+
+var hideLong = function(minDiff) {
+
+    let mainDiffDiv = document.getElementById('files');
+    let children = mainDiffDiv.children;
+    let nbOfCommits = children.length;
+
+    for(var i=0, ii = nbOfCommits; i<ii; i++) {
+        let child = children[i];
+        if(!child.id || child.id.indexOf('diff-') == -1){
+            continue;
+        }
+
+        let diffContainer = child;
+        let diffContainerBody = diffContainer.children[1];
+
+        let diffStats = parseInt(diffContainer.children[0].children[0].children[0].firstChild.textContent, 10);
+        //console.log(diffStats);
+
+        if(diffStats > minDiff){
             diffContainerBody.style.display = 'none';
-         }
+        }
+    }
+};
+
+var attachToggleButton = function (hiddenByDefault) {
+
+    var buttonBarContainer = document.querySelector('#toc');
+    var buttonBar = buttonBarContainer.children[0];
+
+    var newButton = document.createElement('a');
+    newButton.className = 'minibutton';
+    newButton.href = '#';
+
+    newButton.innerHTML = hiddenByDefault ? 'Expand all' : 'Collapse all';
+
+    let nowHidden = hiddenByDefault; // closure to keep state
+    newButton.addEventListener('click', function(evt) {
+        if(nowHidden == true){
+            toggleDisplayAll(true);
+            nowHidden = false;
+            newButton.innerHTML = 'Collapse all';
+        } else {
+            toggleDisplayAll(false);
+            nowHidden = true;
+            newButton.innerHTML = 'Expand all';
+        }
     });
 
-    if(hideMode) {
-        diffContainerBody.style.display = 'none';
+    buttonBar.appendChild(newButton);
+};
+
+var main = function () {
+
+    // read config
+    let mainDiffDiv = document.getElementById('files');
+    let nbOfFiles = mainDiffDiv.children.length;
+
+    let autoHide = false;
+    let autoHideLong = false;
+    if(nbOfFiles > dontHideUnlessMoreThanFiles) {
+        if(hideAllWhenMoreThanFiles > 0 && nbOfFiles > hideAllWhenMoreThanFiles){
+            autoHide = true;
+        }else if(hideFileWhenDiffGt > 0) {
+            autoHideLong = true;
+        }
     }
-}
+    // let's go
+    attachListeners();
+    if(autoHide) {
+        toggleDisplayAll(false);
+    }else if(autoHideLong) {
+        hideLong(hideFileWhenDiffGt);
+    }
+    attachToggleButton(autoHide);
+};
+
+main();
