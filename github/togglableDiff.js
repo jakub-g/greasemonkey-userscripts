@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name            GitHub toggle diff visibility per file in the commit
-// @description     Useful to review commits with lots of files changed.
+// @name            GitHub code review assistant
+// @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.2.0
+// @version         0.3.0
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -25,6 +25,8 @@
 //  'expand all' / 'collapse all' button
 //  auto hiding on long diff
 //  code refactor
+// 0.3.0
+//  code review mark button
 
 // ============================= CONFIG ================================
 
@@ -38,6 +40,8 @@ var hideFileWhenDiffGt = 30;
 // Do not do any of above if small number of files changed in that commit
 var dontHideUnlessMoreThanFiles = 2;
 
+// Whether to show 'Reviewed' button next to each file
+var enableReviewedButton = true;
 // ============================== CODE =================================
 
 var attachListeners = function() {
@@ -162,6 +166,56 @@ var attachToggleButton = function (hiddenByDefault) {
 
     buttonBar.appendChild(newButton);
 };
+var attachReviewedButton = function () {
+
+   var XPathTools = {
+      getElementByXpath : function(xpath, referenceNode) {
+         var xPathResult = document.evaluate (xpath, referenceNode, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+         return xPathResult.singleNodeValue;
+      }
+   };
+
+    let mainDiffDiv = document.getElementById('files');
+    let children = mainDiffDiv.children;
+    let nbOfCommits = children.length;
+
+    for(var i=0, ii = nbOfCommits; i<ii; i++) {
+        let child = children[i];
+        if(!child.id || child.id.indexOf('diff-') == -1){
+            continue;
+        }
+
+        let diffContainer = child;
+        let diffContainerHeader = diffContainer.children[0];
+        let diffContainerBody = diffContainer.children[1];
+
+        var parent = XPathTools.getElementByXpath('.//div[@class="actions"]/ul/li', diffContainer);
+        console.log(parent);
+
+
+        var newButton = document.createElement('a');
+        newButton.className = 'grouped-button minibutton bigger lighter';
+        //newButton.href = '#';
+
+        newButton.innerHTML = 'Reviewed';
+
+        let reviewed = false; // closure to keep state
+        newButton.addEventListener('click', function(evt) {
+            if(reviewed == true){
+                reviewed = false;
+                diffContainerHeader.style.backgroundImage = 'linear-gradient(#FAFAFA, #EAEAEA)';
+                diffContainerHeader.style.color = '#555555';
+            } else {
+                reviewed = true;
+                diffContainerHeader.style.backgroundImage = 'linear-gradient(#333, #444)';
+                diffContainerHeader.style.color = '#FFF';
+                diffContainerBody.style.display = 'none';
+            }
+        });
+
+        parent.insertBefore(newButton, parent.firstChild);
+    }
+};
 
 var main = function () {
 
@@ -186,6 +240,10 @@ var main = function () {
         hideLong(hideFileWhenDiffGt);
     }
     attachToggleButton(autoHide);
+
+    if(enableReviewedButton){
+        attachReviewedButton();
+    }
 };
 
 main();
