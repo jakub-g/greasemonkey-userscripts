@@ -2,7 +2,7 @@
 // @name            GitHub code review assistant
 // @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.3.0
+// @version         0.4.0-20130201
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -27,15 +27,17 @@
 //  code refactor
 // 0.3.0
 //  code review mark button
+// 0.4.0-20130201
+//  accomodated to new GH HTML markup
 
 // ============================= CONFIG ================================
 
 // If there's more than N commits in the diff, automatically collapse them all.
 // Use 0 to disable that feature.
-var hideAllWhenMoreThanFiles = 10;
+var hideAllWhenMoreThanFiles = 4;
 
 // Automatically collapse entries that have changed more than N lines.
-var hideFileWhenDiffGt = 30;
+var hideFileWhenDiffGt = 0;
 
 // Do not do any of above if small number of files changed in that commit
 var dontHideUnlessMoreThanFiles = 2;
@@ -189,13 +191,13 @@ var attachReviewedButton = function () {
         let diffContainerHeader = diffContainer.children[0];
         let diffContainerBody = diffContainer.children[1];
 
-        var parent = XPathTools.getElementByXpath('.//div[@class="actions"]/ul/li', diffContainer);
+        var parent = XPathTools.getElementByXpath('.//div[@class="actions"]/div[@class="button-group"]', diffContainer);
         console.log(parent);
 
 
         var newButton = document.createElement('a');
-        newButton.className = 'grouped-button minibutton bigger lighter';
-        //newButton.href = '#';
+        newButton.className = 'minibutton';
+        //newButton.href = '#fakeHash';
 
         newButton.innerHTML = 'Reviewed';
 
