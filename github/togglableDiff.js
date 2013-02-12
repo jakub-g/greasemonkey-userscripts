@@ -2,7 +2,7 @@
 // @name            GitHub code review assistant
 // @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.4.0-20130201
+// @version         0.4.1-20130212
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -10,6 +10,7 @@
 // @grant           none
 // @include         http*://github.com/*/*/commit/*
 // @include         http*://github.com/*/*/pull/*
+// @include         http*://github.com/*/*/compare/*
 // ==/UserScript==
 
 // Changelog:
@@ -29,6 +30,8 @@
 //  code review mark button
 // 0.4.0-20130201
 //  accomodated to new GH HTML markup
+// 0.4.1-20130212
+//  enabled also on /compare/ URLs
 
 // ============================= CONFIG ================================
 
