@@ -2,7 +2,7 @@
 // @name            GitHub code review assistant
 // @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.5.0-20130305
+// @version         0.6.0-20130404
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -34,6 +34,10 @@
 //  enabled also on /compare/ URLs
 // 0.5.0-20130305
 //  Works also in Chrome (Tampermonkey) now!
+// 0.6.0-20130404
+//  Added sidebar and footer to quickly go to the beginning of the current file.
+//  Added additional button to mark file as problematic (OK / Fail).
+//  After clicking "Reviewed" on file n, scroll to file n, and make the file n+1 expanded.
 
 // ============================= CONFIG ================================
 
@@ -49,7 +53,22 @@ var dontHideUnlessMoreThanFiles = 2;
 
 // Whether to show 'Reviewed' button next to each file
 var enableReviewedButton = true;
+
+// Whether to show sidebar and footer that scroll to the top of the file on click.
+// Below related look'n'feel config
+var enableDiffSidebarAndFooter = true;
+var sidebarSize = 12; // in pixels
+var footerSize = 8;
+var sidebarColor1 = '#eee';
+var sidebarColor2 = '#aaa';
 // ============================== CODE =================================
+
+var addCss = function (sCss){
+    var dStyle = document.createElement('style');
+    dStyle.type = 'text/css';
+    dStyle.appendChild(document.createTextNode(sCss));
+    document.getElementsByTagName('head')[0].appendChild(dStyle);
+}
 
 var freeze = function (collection) {
     return collection;
@@ -194,27 +213,56 @@ var XPathTools = {
   }
 };
 
-var attachReviewedButton = function () {
+var attachPerFileItems = function () {
 
     var mainDiffDiv = document.getElementById('files');
     var children = freeze(mainDiffDiv.children);
     var nbOfCommits = children.length;
 
+    if (enableDiffSidebarAndFooter) {
+        var css = []; //#EAEAEA, #FAFAFA
+        css.push('.ghAssistantFileFoot {height: ' + footerSize + 'px; border-top: 1px solid rgb(216, 216, 216);   background-image: linear-gradient(' + sidebarColor1 + ', ' + sidebarColor2 + ');           font-size: 6pt;} ');
+        css.push('.ghAssistantFileSide {width: '+ sidebarSize + 'px;  border-right: 1px solid rgb(216, 216, 216); background-image: linear-gradient(to right, ' + sidebarColor2 + ', ' + sidebarColor1 + '); font-size: 6pt; height: 100%; float: left; position: absolute; top:0; left:-' + (sidebarSize+2) + 'px; border-radius:0 0 0 10px;}');
+
+        css.push('.ghAssistantFileFoot:hover {background-image: linear-gradient(' + sidebarColor2 + ', ' + sidebarColor1 + ');} ');
+        css.push('.ghAssistantFileSide:hover {background-image: linear-gradient(to right, ' + sidebarColor1 + ', ' + sidebarColor2 + ');}');
+
+        css.push('.ghAssistantFileFoot a {display: block; height:100%;}');
+        css.push('.ghAssistantFileSide a {display: block; height:100%;}');
+
+        // override GH's CSS with the "+" button on the side to add the comments
+        css.push('#files .add-bubble { margin-left:-'+ (25+sidebarSize)+'px} !important');
+        addCss(css.join('\n'));
+    }
+
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
         var child = children[i];
-        attachReviewedButtonChild(child);
+        if (enableReviewedButton) {
+            attachRejectedButtonChild(child);
+            attachReviewedButtonChild(child);
+        }
+        if (enableDiffSidebarAndFooter) {
+            attachSidebarAndFooter(child);
+        }
     }
 };
 
 var attachReviewedButtonChild = function (child) {
+    genericAttachReviewedButtonChild(child, 'OK', ['#333', '#444', '#FFF'], ['#FAFAFA', '#EAEAEA', '#555']);
+};
+var attachRejectedButtonChild = function (child) {
+    genericAttachReviewedButtonChild(child, 'Fail', ['#833', '#844', '#FFF'], ['#FAFAFA', '#EAEAEA', '#555']);
+};
 
+var genericAttachReviewedButtonChild = function (child, text, aColorsNormal, aColorsActive) {
     if(!child.id || child.id.indexOf('diff-') == -1){
         return;
     }
 
+    var currentDiffIdx = Number(child.id.replace('diff-',''));
     var diffContainer = child;
-    var diffContainerHeader = diffContainer.children[0];
-    var diffContainerBody = diffContainer.children[1];
+    var diffContainerHeader = diffContainer.children[0]; // .meta
+    var diffContainerBody = diffContainer.children[1];   // .data
 
     var parent = XPathTools.getElementByXpath('.//div[@class="actions"]/div[@class="button-group"]', diffContainer);
 
@@ -222,25 +270,54 @@ var attachReviewedButtonChild = function (child) {
     newButton.className = 'minibutton';
     //newButton.href = '#fakeHash';
 
-    newButton.innerHTML = 'Reviewed';
+    newButton.innerHTML = text;
 
     var reviewed = false; // closure to keep state
     newButton.addEventListener('click', function(evt) {
         if(reviewed == true){
             reviewed = false;
-            diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, #FAFAFA, #EAEAEA)';
-            diffContainerHeader.style.backgroundImage = 'linear-gradient(#FAFAFA, #EAEAEA)';
-            diffContainerHeader.style.color = '#555555';
+            diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, ' + aColorsActive[0] + ', ' + aColorsActive[1] + ')';
+            diffContainerHeader.style.backgroundImage = 'linear-gradient(' + aColorsActive[0] + ', ' + aColorsActive[1] + ')';
+            diffContainerHeader.style.color = aColorsActive[2];
         } else {
             reviewed = true;
-            diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, #333, #444)';
-            diffContainerHeader.style.backgroundImage = 'linear-gradient(#333, #444)';
-            diffContainerHeader.style.color = '#FFF';
+            diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, ' + aColorsNormal[0] + ', ' + aColorsNormal[1] + ')';
+            diffContainerHeader.style.backgroundImage = 'linear-gradient(' + aColorsNormal[0] + ', ' + aColorsNormal[1] + ')';
+            diffContainerHeader.style.color = aColorsNormal[2];
             diffContainerBody.style.display = 'none';
+
+            // scroll the page so that currently reviewed file is in the top
+            document.location = '#diff-' + currentDiffIdx;
+            // expand the next file if it was hidden
+            var next = document.getElementById('diff-' + (currentDiffIdx+1));
+            if(next) {
+                next.children[1].style.display = 'block';
+            }
         }
     });
 
     parent.insertBefore(newButton, parent.firstChild);
+};
+
+var attachSidebarAndFooter = function (child) {
+    if(!child.id || child.id.indexOf('diff-') == -1){
+        return;
+    }
+
+    var diffContainer = child;
+    var diffContainerBody = diffContainer.children[1];
+
+    var hLink = '<a title="Click me to scroll to the top of this file" href="#' + diffContainer.id + '">&nbsp;</a>';
+
+    var dfoot = document.createElement('div');
+    dfoot.className = 'ghAssistantFileFoot';
+    dfoot.innerHTML = hLink;
+    diffContainer.appendChild(dfoot);
+
+    var dsidebar = document.createElement('div');
+    dsidebar.className = 'ghAssistantFileSide';
+    dsidebar.innerHTML = hLink;
+    diffContainer.appendChild(dsidebar);
 };
 
 var main = function () {
@@ -267,9 +344,7 @@ var main = function () {
     }
     attachToggleButton(autoHide);
 
-    if(enableReviewedButton){
-        attachReviewedButton();
-    }
+    attachPerFileItems();
 };
 
 main();
