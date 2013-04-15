@@ -2,18 +2,18 @@
 // @name            Hacker News keyboard friendly
 // @description     Only article and comment link are TAB-navigable. They also open in the new tab on ENTER. Also some CSS additions for better readability.
 // @icon            http://ycombinator.com/favicon.ico
-// @version         0.1.1
+// @version         0.1.2
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/hackernews/keyboardFriendly.js
 // @userscriptsOrg  http://userscripts.org/scripts/show/150620
 // @grant           none
-// @include         http://news.ycombinator.com/
-// @include         http://news.ycombinator.com/news*
-// @include         http://news.ycombinator.com/over*
-// @include         http://hackerne.ws/
-// @include         http://hackerne.ws/over*
-// @include         http://hackerne.ws/news*
+// @include         http*://news.ycombinator.com/
+// @include         http*://news.ycombinator.com/news*
+// @include         http*://news.ycombinator.com/over*
+// @include         http*://hackerne.ws/
+// @include         http*://hackerne.ws/over*
+// @include         http*://hackerne.ws/news*
 // ==/UserScript==
 
 /*
