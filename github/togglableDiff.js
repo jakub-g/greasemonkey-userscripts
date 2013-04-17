@@ -71,7 +71,9 @@ CONFIG.sidebarColor2 = '#aaa';
 
 var L10N = {
     ok: 'Ok',
-    fail: 'Fail'
+    fail: 'Fail',
+    expandAll: 'Expand all',
+    collapseAll: 'Collapse all',
 }
 
 var GHA = {};
@@ -132,28 +134,9 @@ GHA.attachGlobalCss = function () {
 };
 
 /**
- * @param elem element to be toggled upon clicking
- * @param bStrictTarget whether the event listener should fire only on its strict target or also children
+ * Attach click listeners to each of the headers of the files in the diff
  */
-GHA._getOnClickToggleDisplayHandler = function(elem, bStrictTarget) {
-    return function(evt){
-        if(bStrictTarget){
-            if (evt.currentTarget != evt.target) {
-                // don't want to trigger the event when clicking on "View file" or "Show comment"
-                return;
-            }
-        }
-
-        var currDisplay = elem.style.display;
-        if(currDisplay === 'none') {
-            elem.style.display = 'block';
-        } else {
-            elem.style.display = 'none';
-        }
-    };
-};
-
-GHA.attachClickListeners = function() {
+GHA.attachToggleDisplayOnClickListeners = function() {
 
     var mainDiffDiv = document.getElementById('files');
     var children = mainDiffDiv.children;
@@ -185,28 +168,33 @@ GHA._attachClickListenersToChild = function (child) {
     diffContainerHeader.style.cursor = 'pointer';
 }
 
-GHA.toggleDisplayAll = function(bVisible) {
-
-    var mainDiffDiv = document.getElementById('files');
-    var children = mainDiffDiv.children;
-    var nbOfCommits = children.length;
-
-    var newDisplay = bVisible ? 'block' : 'none';
-
-    for(var i=0, ii = nbOfCommits; i<ii; i++) {
-        var child = children[i];
-        if(!child.id || child.id.indexOf('diff-') == -1){
-            continue;
+/**
+ * @param elem element to be toggled upon clicking
+ * @param bStrictTarget whether the event listener should fire only on its strict target or also children
+ */
+GHA._getOnClickToggleDisplayHandler = function(elem, bStrictTarget) {
+    return function(evt){
+        if(bStrictTarget){
+            if (evt.currentTarget != evt.target) {
+                // don't want to trigger the event when clicking on "View file" or "Show comment"
+                return;
+            }
         }
 
-        var diffContainer = child;
-        var diffContainerBody = diffContainer.children[1];
-
-        diffContainerBody.style.display = newDisplay;
-    }
+        var currDisplay = elem.style.display;
+        if(currDisplay === 'none') {
+            elem.style.display = 'block';
+        } else {
+            elem.style.display = 'none';
+        }
+    };
 };
 
-GHA.hideLong = function(minDiff) {
+/**
+ * Hide long diffs, i.e. those whose diff size is > @minDiff
+ * @param {Integer} minDiff
+ */
+GHA.hideLongDiffs = function(minDiff) {
 
     var mainDiffDiv = document.getElementById('files');
     var children = mainDiffDiv.children;
@@ -230,6 +218,9 @@ GHA.hideLong = function(minDiff) {
     }
 };
 
+/**
+ * Add buttons that collapse/expand all the diffs on the current page.
+ */
 GHA.attachCollapseExpandDiffsButton = function (hiddenByDefault) {
 
     var buttonBarContainer = document.querySelector('#toc');
@@ -239,18 +230,18 @@ GHA.attachCollapseExpandDiffsButton = function (hiddenByDefault) {
     newButton.className = 'minibutton';
     newButton.href = '#';
 
-    newButton.innerHTML = hiddenByDefault ? 'Expand all' : 'Collapse all';
+    newButton.innerHTML = hiddenByDefault ? L10N.expandAll : L10N.collapseAll;
 
     var nowHidden = hiddenByDefault; // closure to keep state
     newButton.addEventListener('click', function(evt) {
         if(nowHidden == true){
             GHA.toggleDisplayAll(true);
             nowHidden = false;
-            newButton.innerHTML = 'Collapse all';
+            newButton.innerHTML = L10N.collapseAll;
         } else {
             GHA.toggleDisplayAll(false);
             nowHidden = true;
-            newButton.innerHTML = 'Expand all';
+            newButton.innerHTML = L10N.expandAll;
         }
     });
 
@@ -258,10 +249,34 @@ GHA.attachCollapseExpandDiffsButton = function (hiddenByDefault) {
 };
 
 /**
+ * Collapse/expand all the diffs on the current page.
+ */
+GHA.toggleDisplayAll = function(bVisible) {
+
+    var mainDiffDiv = document.getElementById('files');
+    var children = mainDiffDiv.children;
+    var nbOfCommits = children.length;
+
+    var newDisplay = bVisible ? 'block' : 'none';
+
+    for(var i=0, ii = nbOfCommits; i<ii; i++) {
+        var child = children[i];
+        if(!child.id || child.id.indexOf('diff-') == -1){
+            continue;
+        }
+
+        var diffContainer = child;
+        var diffContainerBody = diffContainer.children[1];
+
+        diffContainerBody.style.display = newDisplay;
+    }
+};
+
+/**
  * Attach Ok/Fail buttons for code review, and sidebars/footers for navigating to the top of the file,
  * for each of the files on the diff list.
  */
-GHA.attachPerFileItems = function () {
+GHA.attachPerDiffFileFeatures = function () {
 
     var mainDiffDiv = document.getElementById('files');
     var children = mainDiffDiv.children;
@@ -305,13 +320,13 @@ GHA._attachReviewStatusButton = function (child, text /*also cssClassNamePostfix
             // remove the added class name for 'Fail' / 'Ok'
             diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassName, '');
         } else {
-            // remove 'Ok' if we're setting 'Fail' and the opposite as well
-            diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassNameAlt, '');
-            // add the class name for 'Fail' / 'Ok'
-            diffContainerHeader.className += " " + ghaClassName;
+            // 1 remove 'Ok' if we're setting 'Fail' and the opposite as well
+            // 2 add the class name for 'Fail' / 'Ok'
+            diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassNameAlt, '') + " " + ghaClassName;
 
             // scroll the page so that currently reviewed file is in the top
             document.location = '#diff-' + currentDiffIdx;
+
             // expand the next file if it was hidden
             var next = document.getElementById('diff-' + (currentDiffIdx+1));
             if(next) {
@@ -323,6 +338,10 @@ GHA._attachReviewStatusButton = function (child, text /*also cssClassNamePostfix
     parent.insertBefore(newButton, parent.firstChild);
 };
 
+/**
+ * Add sidebar and footer to each of the files in the diff. When clicked, that sidebar/footer
+ * scrolls page to the top of the current file.
+ */
 GHA._attachSidebarAndFooter = function (child) {
     if(!child.id || child.id.indexOf('diff-') == -1){
         return;
@@ -381,17 +400,18 @@ var main = function () {
             autoHideLong = true;
         }
     }
+
     // let's go
     GHA.attachGlobalCss();
-    GHA.attachClickListeners();
+    GHA.attachToggleDisplayOnClickListeners();
     if(autoHide) {
         GHA.toggleDisplayAll(false);
     }else if(autoHideLong) {
-        GHA.hideLong(CONFIG.hideFileWhenDiffGt);
+        GHA.hideLongDiffs(CONFIG.hideFileWhenDiffGt);
     }
     GHA.attachCollapseExpandDiffsButton(autoHide);
 
-    GHA.attachPerFileItems();
+    GHA.attachPerDiffFileFeatures();
 };
 
 main();
