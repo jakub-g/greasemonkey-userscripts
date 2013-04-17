@@ -65,6 +65,11 @@ var sidebarColor1 = '#eee';
 var sidebarColor2 = '#aaa';
 // ============================== CODE =================================
 
+var L10N = {
+    ok: 'Ok',
+    fail: 'Fail'
+}
+
 var addCss = function (sCss){
     var dStyle = document.createElement('style');
     dStyle.type = 'text/css';
@@ -221,8 +226,26 @@ var attachPerFileItems = function () {
     var children = freeze(mainDiffDiv.children);
     var nbOfCommits = children.length;
 
+    var css = []; //#EAEAEA, #FAFAFA
+    css.push('.ghAssistantButtonStateNormal {\
+        background-image: -webkit-linear-gradient(top, #fafafa, #eaeaea) !important;\
+        background-image:   linear-gradient(to bottom, #fafafa, #eaeaea) !important;\
+        color: #555 !important;\
+        text-shadow: none !important;\
+    }');
+    css.push('.ghAssistantButtonStateOk {\
+        background-image: -webkit-linear-gradient(top, #333, #444) !important;\
+        background-image:   linear-gradient(to bottom, #333, #444) !important;\
+        color: #fff !important;\
+        text-shadow: none !important;\
+    }');
+    css.push('.ghAssistantButtonStateFail {\
+        background-image: -webkit-linear-gradient(top, #833, #844) !important;\
+        background-image:   linear-gradient(to bottom, #833, #844) !important;\
+        color: #fff !important;\
+        text-shadow: none !important;\
+    }');
     if (enableDiffSidebarAndFooter) {
-        var css = []; //#EAEAEA, #FAFAFA
         css.push('.ghAssistantFileFoot {height: ' + footerSize + 'px; border-top: 1px solid rgb(216, 216, 216);   background-image: linear-gradient(' + sidebarColor1 + ', ' + sidebarColor2 + ');           font-size: 6pt;} ');
         css.push('.ghAssistantFileSide {width: '+ sidebarSize + 'px;  border-right: 1px solid rgb(216, 216, 216); background-image: linear-gradient(to right, ' + sidebarColor2 + ', ' + sidebarColor1 + '); font-size: 6pt; height: 100%; float: left; position: absolute; top:0; left:-' + (sidebarSize+2) + 'px; border-radius:0 0 0 10px;}');
 
@@ -234,8 +257,8 @@ var attachPerFileItems = function () {
 
         // override GH's CSS with the "+" button on the side to add the comments
         css.push('#files .add-bubble { margin-left:-'+ (25+sidebarSize)+'px} !important');
-        addCss(css.join('\n'));
     }
+    addCss(css.join('\n'));
 
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
         var child = children[i];
@@ -250,13 +273,13 @@ var attachPerFileItems = function () {
 };
 
 var attachReviewedButtonChild = function (child) {
-    genericAttachReviewedButtonChild(child, 'OK', ['#333', '#444', '#FFF'], ['#FAFAFA', '#EAEAEA', '#555']);
+    genericAttachReviewedButtonChild(child, L10N.ok);
 };
 var attachRejectedButtonChild = function (child) {
-    genericAttachReviewedButtonChild(child, 'Fail', ['#833', '#844', '#FFF'], ['#FAFAFA', '#EAEAEA', '#555']);
+    genericAttachReviewedButtonChild(child, L10N.fail);
 };
 
-var genericAttachReviewedButtonChild = function (child, text, aColorsNormal, aColorsActive) {
+var genericAttachReviewedButtonChild = function (child, text /*also cssClassNamePostfix*/) {
     if(!child.id || child.id.indexOf('diff-') == -1){
         return;
     }
@@ -274,21 +297,18 @@ var genericAttachReviewedButtonChild = function (child, text, aColorsNormal, aCo
 
     newButton.innerHTML = text;
 
-    var reviewed = false; // closure to keep state
     newButton.addEventListener('click', function(evt) {
+        var ghaClassName = 'ghAssistantButtonState' + text;
+        var ghaClassNameAlt = 'ghAssistantButtonState' + (text === L10N.ok ? L10N.fail : L10N.ok);
+        var reviewed = diffContainerHeader.className.indexOf(ghaClassName) > -1;
         if(reviewed == true){
-            reviewed = false;
-            diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, ' + aColorsActive[0] + ', ' + aColorsActive[1] + ')';
-            diffContainerHeader.style.backgroundImage = 'linear-gradient(' + aColorsActive[0] + ', ' + aColorsActive[1] + ')';
-            diffContainerHeader.style.color = aColorsActive[2];
-            diffContainerHeader.style.textShadow = 'none';
+            // remove the added class name for 'Fail' / 'Ok'
+            diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassName, '');
         } else {
-            reviewed = true;
-            diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, ' + aColorsNormal[0] + ', ' + aColorsNormal[1] + ')';
-            diffContainerHeader.style.backgroundImage = 'linear-gradient(' + aColorsNormal[0] + ', ' + aColorsNormal[1] + ')';
-            diffContainerHeader.style.color = aColorsNormal[2];
-            diffContainerHeader.style.textShadow = 'none';
-            diffContainerBody.style.display = 'none';
+            // remove 'Ok' if we're setting 'Fail' and the opposite as well
+            diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassNameAlt, '');
+            // add the class name for 'Fail' / 'Ok'
+            diffContainerHeader.className += " " + ghaClassName;
 
             // scroll the page so that currently reviewed file is in the top
             document.location = '#diff-' + currentDiffIdx;
