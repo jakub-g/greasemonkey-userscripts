@@ -2,7 +2,7 @@
 // @name            GitHub code review assistant
 // @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.6.0-20130404
+// @version         0.6.1.20130417
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -38,6 +38,8 @@
 //  Added sidebar and footer to quickly go to the beginning of the current file.
 //  Added additional button to mark file as problematic (OK / Fail).
 //  After clicking "Reviewed" on file n, scroll to file n, and make the file n+1 expanded.
+// 0.6.1.20130417
+//  Fix the ugly text shadow on marked files
 
 // ============================= CONFIG ================================
 
@@ -279,11 +281,13 @@ var genericAttachReviewedButtonChild = function (child, text, aColorsNormal, aCo
             diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, ' + aColorsActive[0] + ', ' + aColorsActive[1] + ')';
             diffContainerHeader.style.backgroundImage = 'linear-gradient(' + aColorsActive[0] + ', ' + aColorsActive[1] + ')';
             diffContainerHeader.style.color = aColorsActive[2];
+            diffContainerHeader.style.textShadow = 'none';
         } else {
             reviewed = true;
             diffContainerHeader.style.backgroundImage = '-webkit-linear-gradient(top, ' + aColorsNormal[0] + ', ' + aColorsNormal[1] + ')';
             diffContainerHeader.style.backgroundImage = 'linear-gradient(' + aColorsNormal[0] + ', ' + aColorsNormal[1] + ')';
             diffContainerHeader.style.color = aColorsNormal[2];
+            diffContainerHeader.style.textShadow = 'none';
             diffContainerBody.style.display = 'none';
 
             // scroll the page so that currently reviewed file is in the top
