@@ -43,26 +43,27 @@
 
 // ============================= CONFIG ================================
 
+var CONFIG = {};
 // If there's more than N commits in the diff, automatically collapse them all.
 // Use 0 to disable that feature.
-var hideAllWhenMoreThanFiles = 4;
+CONFIG.hideAllWhenMoreThanFiles = 4;
 
 // Automatically collapse entries that have changed more than N lines.
-var hideFileWhenDiffGt = 0;
+CONFIG.hideFileWhenDiffGt = 0;
 
 // Do not do any of above if small number of files changed in that commit
-var dontHideUnlessMoreThanFiles = 2;
+CONFIG.dontHideUnlessMoreThanFiles = 2;
 
 // Whether to show 'Reviewed' button next to each file
-var enableReviewedButton = true;
+CONFIG.enableReviewedButton = true;
 
 // Whether to show sidebar and footer that scroll to the top of the file on click.
 // Below related look'n'feel config
-var enableDiffSidebarAndFooter = true;
-var sidebarSize = 12; // in pixels
-var footerSize = 8;
-var sidebarColor1 = '#eee';
-var sidebarColor2 = '#aaa';
+CONFIG.enableDiffSidebarAndFooter = true;
+CONFIG.sidebarSize = 12; // in pixels
+CONFIG.footerSize = 8;
+CONFIG.sidebarColor1 = '#eee';
+CONFIG.sidebarColor2 = '#aaa';
 // ============================== CODE =================================
 
 var L10N = {
@@ -245,28 +246,28 @@ var attachPerFileItems = function () {
         color: #fff !important;\
         text-shadow: none !important;\
     }');
-    if (enableDiffSidebarAndFooter) {
-        css.push('.ghAssistantFileFoot {height: ' + footerSize + 'px; border-top: 1px solid rgb(216, 216, 216);   background-image: linear-gradient(' + sidebarColor1 + ', ' + sidebarColor2 + ');           font-size: 6pt;} ');
-        css.push('.ghAssistantFileSide {width: '+ sidebarSize + 'px;  border-right: 1px solid rgb(216, 216, 216); background-image: linear-gradient(to right, ' + sidebarColor2 + ', ' + sidebarColor1 + '); font-size: 6pt; height: 100%; float: left; position: absolute; top:0; left:-' + (sidebarSize+2) + 'px; border-radius:0 0 0 10px;}');
+    if (CONFIG.enableDiffSidebarAndFooter) {
+        css.push('.ghAssistantFileFoot {height: ' + CONFIG.footerSize + 'px; border-top: 1px solid rgb(216, 216, 216);   background-image: linear-gradient(' + CONFIG.sidebarColor1 + ', ' + CONFIG.sidebarColor2 + ');           font-size: 6pt;} ');
+        css.push('.ghAssistantFileSide {width: '+ CONFIG.sidebarSize + 'px;  border-right: 1px solid rgb(216, 216, 216); background-image: linear-gradient(to right, ' + CONFIG.sidebarColor2 + ', ' + CONFIG.sidebarColor1 + '); font-size: 6pt; height: 100%; float: left; position: absolute; top:0; left:-' + (CONFIG.sidebarSize+2) + 'px; border-radius:0 0 0 10px;}');
 
-        css.push('.ghAssistantFileFoot:hover {background-image: linear-gradient(' + sidebarColor2 + ', ' + sidebarColor1 + ');} ');
-        css.push('.ghAssistantFileSide:hover {background-image: linear-gradient(to right, ' + sidebarColor1 + ', ' + sidebarColor2 + ');}');
+        css.push('.ghAssistantFileFoot:hover {background-image: linear-gradient(' + CONFIG.sidebarColor2 + ', ' + CONFIG.sidebarColor1 + ');} ');
+        css.push('.ghAssistantFileSide:hover {background-image: linear-gradient(to right, ' + CONFIG.sidebarColor1 + ', ' + CONFIG.sidebarColor2 + ');}');
 
         css.push('.ghAssistantFileFoot a {display: block; height:100%;}');
         css.push('.ghAssistantFileSide a {display: block; height:100%;}');
 
         // override GH's CSS with the "+" button on the side to add the comments
-        css.push('#files .add-bubble { margin-left:-'+ (25+sidebarSize)+'px} !important');
+        css.push('#files .add-bubble { margin-left:-'+ (25+CONFIG.sidebarSize)+'px} !important');
     }
     addCss(css.join('\n'));
 
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
         var child = children[i];
-        if (enableReviewedButton) {
+        if (CONFIG.enableReviewedButton) {
             attachRejectedButtonChild(child);
             attachReviewedButtonChild(child);
         }
-        if (enableDiffSidebarAndFooter) {
+        if (CONFIG.enableDiffSidebarAndFooter) {
             attachSidebarAndFooter(child);
         }
     }
@@ -352,10 +353,10 @@ var main = function () {
 
     var autoHide = false;
     var autoHideLong = false;
-    if(nbOfFiles > dontHideUnlessMoreThanFiles) {
-        if(hideAllWhenMoreThanFiles > 0 && nbOfFiles > hideAllWhenMoreThanFiles){
+    if(nbOfFiles > CONFIG.dontHideUnlessMoreThanFiles) {
+        if(CONFIG.hideAllWhenMoreThanFiles > 0 && nbOfFiles > CONFIG.hideAllWhenMoreThanFiles){
             autoHide = true;
-        }else if(hideFileWhenDiffGt > 0) {
+        }else if(CONFIG.hideFileWhenDiffGt > 0) {
             autoHideLong = true;
         }
     }
@@ -364,7 +365,7 @@ var main = function () {
     if(autoHide) {
         toggleDisplayAll(false);
     }else if(autoHideLong) {
-        hideLong(hideFileWhenDiffGt);
+        hideLong(CONFIG.hideFileWhenDiffGt);
     }
     attachToggleButton(autoHide);
 
