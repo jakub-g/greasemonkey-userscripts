@@ -71,6 +71,58 @@ var L10N = {
     fail: 'Fail'
 }
 
+var attachGlobalCss = function () {
+    var css = [];
+    css.push('.ghAssistantButtonStateNormal {\
+        background-image:   linear-gradient(to bottom, #fafafa, #eaeaea) !important;\
+        color: #555 !important;\
+        text-shadow: none !important;\
+    }');
+    css.push('.ghAssistantButtonStateOk {\
+        background-image:   linear-gradient(to bottom, #333, #444) !important;\
+        color: #fff !important;\
+        text-shadow: none !important;\
+    }');
+    css.push('.ghAssistantButtonStateFail {\
+        background-image:   linear-gradient(to bottom, #833, #844) !important;\
+        color: #fff !important;\
+        text-shadow: none !important;\
+    }');
+    if (CONFIG.enableDiffSidebarAndFooter) {
+        css.push('.ghAssistantFileFoot {\
+            height: ' + CONFIG.footerSize + 'px;\
+            border-top: 1px solid rgb(216, 216, 216);\
+            background-image: linear-gradient(' + CONFIG.sidebarColor1 + ', ' + CONFIG.sidebarColor2 + ');\
+            font-size: 6pt;}\
+        ');
+        css.push('.ghAssistantFileSide {\
+            width: '+ CONFIG.sidebarSize + 'px;  border-right: 1px solid rgb(216, 216, 216);\
+            background-image: linear-gradient(to right, ' + CONFIG.sidebarColor2 + ', ' + CONFIG.sidebarColor1 + ');\
+            font-size: 6pt;\
+            height: 100%;\
+            float: left;\
+            position: absolute;\
+            top:0;\
+            left:-' + (CONFIG.sidebarSize+2) + 'px;\
+            border-radius:0 0 0 10px;}\
+        ');
+
+        css.push('.ghAssistantFileFoot:hover {\
+            background-image: linear-gradient(' + CONFIG.sidebarColor2 + ', ' + CONFIG.sidebarColor1 + ');\
+        }');
+        css.push('.ghAssistantFileSide:hover {\
+            background-image: linear-gradient(to right, ' + CONFIG.sidebarColor1 + ', ' + CONFIG.sidebarColor2 + ');\
+        }');
+
+        css.push('.ghAssistantFileFoot a {display: block; height:100%;}');
+        css.push('.ghAssistantFileSide a {display: block; height:100%;}');
+
+        // override GH's CSS with the "+" button on the side to add the comments
+        css.push('#files .add-bubble { margin-left:-'+ (25+CONFIG.sidebarSize)+'px} !important');
+    }
+    addCss(css.join('\n'));
+};
+
 var addCss = function (sCss){
     var dStyle = document.createElement('style');
     dStyle.type = 'text/css';
@@ -227,39 +279,7 @@ var attachPerFileItems = function () {
     var children = freeze(mainDiffDiv.children);
     var nbOfCommits = children.length;
 
-    var css = []; //#EAEAEA, #FAFAFA
-    css.push('.ghAssistantButtonStateNormal {\
-        background-image: -webkit-linear-gradient(top, #fafafa, #eaeaea) !important;\
-        background-image:   linear-gradient(to bottom, #fafafa, #eaeaea) !important;\
-        color: #555 !important;\
-        text-shadow: none !important;\
-    }');
-    css.push('.ghAssistantButtonStateOk {\
-        background-image: -webkit-linear-gradient(top, #333, #444) !important;\
-        background-image:   linear-gradient(to bottom, #333, #444) !important;\
-        color: #fff !important;\
-        text-shadow: none !important;\
-    }');
-    css.push('.ghAssistantButtonStateFail {\
-        background-image: -webkit-linear-gradient(top, #833, #844) !important;\
-        background-image:   linear-gradient(to bottom, #833, #844) !important;\
-        color: #fff !important;\
-        text-shadow: none !important;\
-    }');
-    if (CONFIG.enableDiffSidebarAndFooter) {
-        css.push('.ghAssistantFileFoot {height: ' + CONFIG.footerSize + 'px; border-top: 1px solid rgb(216, 216, 216);   background-image: linear-gradient(' + CONFIG.sidebarColor1 + ', ' + CONFIG.sidebarColor2 + ');           font-size: 6pt;} ');
-        css.push('.ghAssistantFileSide {width: '+ CONFIG.sidebarSize + 'px;  border-right: 1px solid rgb(216, 216, 216); background-image: linear-gradient(to right, ' + CONFIG.sidebarColor2 + ', ' + CONFIG.sidebarColor1 + '); font-size: 6pt; height: 100%; float: left; position: absolute; top:0; left:-' + (CONFIG.sidebarSize+2) + 'px; border-radius:0 0 0 10px;}');
 
-        css.push('.ghAssistantFileFoot:hover {background-image: linear-gradient(' + CONFIG.sidebarColor2 + ', ' + CONFIG.sidebarColor1 + ');} ');
-        css.push('.ghAssistantFileSide:hover {background-image: linear-gradient(to right, ' + CONFIG.sidebarColor1 + ', ' + CONFIG.sidebarColor2 + ');}');
-
-        css.push('.ghAssistantFileFoot a {display: block; height:100%;}');
-        css.push('.ghAssistantFileSide a {display: block; height:100%;}');
-
-        // override GH's CSS with the "+" button on the side to add the comments
-        css.push('#files .add-bubble { margin-left:-'+ (25+CONFIG.sidebarSize)+'px} !important');
-    }
-    addCss(css.join('\n'));
 
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
         var child = children[i];
@@ -361,6 +381,7 @@ var main = function () {
         }
     }
     // let's go
+    attachGlobalCss();
     attachListeners();
     if(autoHide) {
         toggleDisplayAll(false);
