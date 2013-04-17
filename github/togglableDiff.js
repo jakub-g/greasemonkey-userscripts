@@ -2,7 +2,7 @@
 // @name            GitHub code review assistant
 // @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.6.1.20130417
+// @version         0.6.2.20130417
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -40,6 +40,8 @@
 //  After clicking "Reviewed" on file n, scroll to file n, and make the file n+1 expanded.
 // 0.6.1.20130417
 //  Fix the ugly text shadow on marked files
+// 0.6.2.20130417
+//  Refactor, comments
 
 // ============================= CONFIG ================================
 
@@ -64,6 +66,7 @@ CONFIG.sidebarSize = 12; // in pixels
 CONFIG.footerSize = 8;
 CONFIG.sidebarColor1 = '#eee';
 CONFIG.sidebarColor2 = '#aaa';
+
 // ============================== CODE =================================
 
 var L10N = {
@@ -71,8 +74,11 @@ var L10N = {
     fail: 'Fail'
 }
 
-var attachGlobalCss = function () {
+var GHA = {};
+
+GHA.attachGlobalCss = function () {
     var css = [];
+
     css.push('.ghAssistantButtonStateNormal {\
         background-image:   linear-gradient(to bottom, #fafafa, #eaeaea) !important;\
         color: #555 !important;\
@@ -88,6 +94,7 @@ var attachGlobalCss = function () {
         color: #fff !important;\
         text-shadow: none !important;\
     }');
+
     if (CONFIG.enableDiffSidebarAndFooter) {
         css.push('.ghAssistantFileFoot {\
             height: ' + CONFIG.footerSize + 'px;\
@@ -120,31 +127,15 @@ var attachGlobalCss = function () {
         // override GH's CSS with the "+" button on the side to add the comments
         css.push('#files .add-bubble { margin-left:-'+ (25+CONFIG.sidebarSize)+'px} !important');
     }
-    addCss(css.join('\n'));
-};
 
-var addCss = function (sCss){
-    var dStyle = document.createElement('style');
-    dStyle.type = 'text/css';
-    dStyle.appendChild(document.createTextNode(sCss));
-    document.getElementsByTagName('head')[0].appendChild(dStyle);
-}
-
-var freeze = function (collection) {
-    return collection;
-
-    //var output = [];
-    //for(var i=0; i<collection.length; i++){
-    //    output.push(collection[i]);
-    //}
-    //return output;
+    DomUtil.addCss(css.join('\n'));
 };
 
 /**
  * @param elem element to be toggled upon clicking
  * @param bStrictTarget whether the event listener should fire only on its strict target or also children
  */
-var getHandler = function(elem, bStrictTarget) {
+GHA._getOnClickToggleDisplayHandler = function(elem, bStrictTarget) {
     return function(evt){
         if(bStrictTarget){
             if (evt.currentTarget != evt.target) {
@@ -162,19 +153,19 @@ var getHandler = function(elem, bStrictTarget) {
     };
 };
 
-var attachListeners = function() {
+GHA.attachClickListeners = function() {
 
     var mainDiffDiv = document.getElementById('files');
-    var children = freeze(mainDiffDiv.children);
+    var children = mainDiffDiv.children;
     var nbOfCommits = children.length;
 
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
         var child = children[i];
-        attachListenersToChild(child);
+        GHA._attachClickListenersToChild(child);
     }
 };
 
-var attachListenersToChild = function (child) {
+GHA._attachClickListenersToChild = function (child) {
     if(!child.id || child.id.indexOf('diff-') == -1){
         return;
     }
@@ -186,15 +177,15 @@ var attachListenersToChild = function (child) {
 
     var diffContainerBody = diffContainer.children[1];
 
-    var handler1 = getHandler(diffContainerBody, false);
-    var handler2 = getHandler(diffContainerBody, true);
+    var handler1 = GHA._getOnClickToggleDisplayHandler(diffContainerBody, false);
+    var handler2 = GHA._getOnClickToggleDisplayHandler(diffContainerBody, true);
 
     diffContainerFileNameHeader.addEventListener('click', handler1, false);
     diffContainerHeader.addEventListener('click', handler2, true);
     diffContainerHeader.style.cursor = 'pointer';
 }
 
-var toggleDisplayAll = function(bVisible) {
+GHA.toggleDisplayAll = function(bVisible) {
 
     var mainDiffDiv = document.getElementById('files');
     var children = mainDiffDiv.children;
@@ -215,10 +206,10 @@ var toggleDisplayAll = function(bVisible) {
     }
 };
 
-var hideLong = function(minDiff) {
+GHA.hideLong = function(minDiff) {
 
     var mainDiffDiv = document.getElementById('files');
-    var children = freeze(mainDiffDiv.children);
+    var children = mainDiffDiv.children;
     var nbOfCommits = children.length;
 
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
@@ -239,7 +230,7 @@ var hideLong = function(minDiff) {
     }
 };
 
-var attachToggleButton = function (hiddenByDefault) {
+GHA.attachCollapseExpandDiffsButton = function (hiddenByDefault) {
 
     var buttonBarContainer = document.querySelector('#toc');
     var buttonBar = buttonBarContainer.children[0];
@@ -253,11 +244,11 @@ var attachToggleButton = function (hiddenByDefault) {
     var nowHidden = hiddenByDefault; // closure to keep state
     newButton.addEventListener('click', function(evt) {
         if(nowHidden == true){
-            toggleDisplayAll(true);
+            GHA.toggleDisplayAll(true);
             nowHidden = false;
             newButton.innerHTML = 'Collapse all';
         } else {
-            toggleDisplayAll(false);
+            GHA.toggleDisplayAll(false);
             nowHidden = true;
             newButton.innerHTML = 'Expand all';
         }
@@ -266,41 +257,29 @@ var attachToggleButton = function (hiddenByDefault) {
     buttonBar.appendChild(newButton);
 };
 
-var XPathTools = {
-  getElementByXpath : function(xpath, referenceNode) {
-     var xPathResult = document.evaluate (xpath, referenceNode, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-     return xPathResult.singleNodeValue;
-  }
-};
-
-var attachPerFileItems = function () {
+/**
+ * Attach Ok/Fail buttons for code review, and sidebars/footers for navigating to the top of the file,
+ * for each of the files on the diff list.
+ */
+GHA.attachPerFileItems = function () {
 
     var mainDiffDiv = document.getElementById('files');
-    var children = freeze(mainDiffDiv.children);
+    var children = mainDiffDiv.children;
     var nbOfCommits = children.length;
-
-
 
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
         var child = children[i];
         if (CONFIG.enableReviewedButton) {
-            attachRejectedButtonChild(child);
-            attachReviewedButtonChild(child);
+            GHA._attachReviewStatusButton(child, L10N.ok);
+            GHA._attachReviewStatusButton(child, L10N.fail);
         }
         if (CONFIG.enableDiffSidebarAndFooter) {
-            attachSidebarAndFooter(child);
+            GHA._attachSidebarAndFooter(child);
         }
     }
 };
 
-var attachReviewedButtonChild = function (child) {
-    genericAttachReviewedButtonChild(child, L10N.ok);
-};
-var attachRejectedButtonChild = function (child) {
-    genericAttachReviewedButtonChild(child, L10N.fail);
-};
-
-var genericAttachReviewedButtonChild = function (child, text /*also cssClassNamePostfix*/) {
+GHA._attachReviewStatusButton = function (child, text /*also cssClassNamePostfix*/) {
     if(!child.id || child.id.indexOf('diff-') == -1){
         return;
     }
@@ -344,7 +323,7 @@ var genericAttachReviewedButtonChild = function (child, text /*also cssClassName
     parent.insertBefore(newButton, parent.firstChild);
 };
 
-var attachSidebarAndFooter = function (child) {
+GHA._attachSidebarAndFooter = function (child) {
     if(!child.id || child.id.indexOf('diff-') == -1){
         return;
     }
@@ -365,6 +344,28 @@ var attachSidebarAndFooter = function (child) {
     diffContainer.appendChild(dsidebar);
 };
 
+// =================================================================================================
+
+var DomUtil = {
+    addCss : function (sCss) {
+        var dStyle = document.createElement('style');
+        dStyle.type = 'text/css';
+        dStyle.appendChild(document.createTextNode(sCss));
+        document.getElementsByTagName('head')[0].appendChild(dStyle);
+    }
+};
+
+// =================================================================================================
+
+var XPathTools = {
+    getElementByXpath : function(xpath, referenceNode) {
+        var xPathResult = document.evaluate (xpath, referenceNode, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+        return xPathResult.singleNodeValue;
+    }
+};
+
+// =================================================================================================
+
 var main = function () {
 
     // read config
@@ -381,16 +382,16 @@ var main = function () {
         }
     }
     // let's go
-    attachGlobalCss();
-    attachListeners();
+    GHA.attachGlobalCss();
+    GHA.attachClickListeners();
     if(autoHide) {
-        toggleDisplayAll(false);
+        GHA.toggleDisplayAll(false);
     }else if(autoHideLong) {
-        hideLong(CONFIG.hideFileWhenDiffGt);
+        GHA.hideLong(CONFIG.hideFileWhenDiffGt);
     }
-    attachToggleButton(autoHide);
+    GHA.attachCollapseExpandDiffsButton(autoHide);
 
-    attachPerFileItems();
+    GHA.attachPerFileItems();
 };
 
 main();
