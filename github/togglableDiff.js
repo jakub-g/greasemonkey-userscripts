@@ -2,7 +2,7 @@
 // @name            GitHub code review assistant
 // @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.6.2.20130417
+// @version         0.9.0.20130418
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
@@ -42,6 +42,13 @@
 //  Fix the ugly text shadow on marked files
 // 0.6.2.20130417
 //  Refactor, comments
+// 0.9.0.20130418
+//  Local storage support to preserve the review across page refreshes!
+
+
+// TODO
+// 1. On compare pages with really long diffs, it can take a few seconds to load everything.
+//    To profile and see if something can be improved.
 
 // ============================= CONFIG ================================
 
@@ -97,6 +104,10 @@ GHA.attachGlobalCss = function () {
         text-shadow: none !important;\
     }');
 
+    css.push('.ghAssistantStorageWipe {\
+        margin:40px 5px 20px 20px;\
+    }');
+
     if (CONFIG.enableDiffSidebarAndFooter) {
         css.push('.ghAssistantFileFoot {\
             height: ' + CONFIG.footerSize + 'px;\
@@ -134,19 +145,33 @@ GHA.attachGlobalCss = function () {
 };
 
 /**
- * Attach click listeners to each of the headers of the files in the diff
+ * Get a list of containers of the each diff-file.
  */
-GHA.attachToggleDisplayOnClickListeners = function() {
-
+GHA.getDiffContainers = function() {
     var mainDiffDiv = document.getElementById('files');
     var children = mainDiffDiv.children;
     var nbOfCommits = children.length;
 
+    var out = [];
     for(var i=0, ii = nbOfCommits; i<ii; i++) {
         var child = children[i];
-        GHA._attachClickListenersToChild(child);
+        if(child.id && child.id.indexOf('diff-') === 0){
+            out.push(child);
+        }
     }
+    return out;
 };
+
+/**
+ * Attach click listeners to each of the headers of the files in the diff
+ */
+GHA.attachToggleDisplayOnClickListeners = function() {
+    var diffContainers = GHA.getDiffContainers();
+
+    for(var i=0, ii = diffContainers.length; i<ii; i++) {
+        GHA._attachClickListenersToChild(diffContainers[i]);
+    }
+}
 
 GHA._attachClickListenersToChild = function (child) {
     if(!child.id || child.id.indexOf('diff-') == -1){
@@ -294,6 +319,10 @@ GHA.attachPerDiffFileFeatures = function () {
     }
 };
 
+GHA._getFilePathFromDiffContainerHeader = function (diffContainerHeader) {
+    return diffContainerHeader.querySelector('.info').children[1].innerHTML.trim();
+}
+
 GHA._attachReviewStatusButton = function (child, text /*also cssClassNamePostfix*/) {
     if(!child.id || child.id.indexOf('diff-') == -1){
         return;
@@ -315,22 +344,32 @@ GHA._attachReviewStatusButton = function (child, text /*also cssClassNamePostfix
     newButton.addEventListener('click', function(evt) {
         var ghaClassName = 'ghAssistantButtonState' + text;
         var ghaClassNameAlt = 'ghAssistantButtonState' + (text === L10N.ok ? L10N.fail : L10N.ok);
-        var reviewed = diffContainerHeader.className.indexOf(ghaClassName) > -1;
-        if(reviewed == true){
-            // remove the added class name for 'Fail' / 'Ok'
-            diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassName, '');
+        var wasMarked = diffContainerHeader.className.indexOf(ghaClassName) > -1;
+        var filePath = GHA._getFilePathFromDiffContainerHeader(diffContainerHeader);
+
+        if(wasMarked){
+            /* unmark */
+
+            // remove from localstorage
+            GHA.Storage.clearState(filePath);
+
+            GHAReviewStatusMarker.unmark(diffContainerHeader, ghaClassName);
         } else {
-            // 1 remove 'Ok' if we're setting 'Fail' and the opposite as well
-            // 2 add the class name for 'Fail' / 'Ok'
-            diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassNameAlt, '') + " " + ghaClassName;
+            /* mark as Ok/Fail */
+
+            // save in localstorage
+            var newState = (text === L10N.ok ? 1 : 0);
+            GHA.Storage.saveState(filePath, newState);
+
+            GHAReviewStatusMarker.mark(diffContainerHeader, ghaClassName, ghaClassNameAlt);
 
             // scroll the page so that currently reviewed file is in the top
             document.location = '#diff-' + currentDiffIdx;
 
             // expand the next file if it was hidden
-            var next = document.getElementById('diff-' + (currentDiffIdx+1));
-            if(next) {
-                next.children[1].style.display = 'block';
+            var nextFileContainer = document.getElementById('diff-' + (currentDiffIdx+1));
+            if(nextFileContainer) {
+                nextFileContainer.children[1].style.display = 'block';
             }
         }
     });
@@ -361,6 +400,157 @@ GHA._attachSidebarAndFooter = function (child) {
     dsidebar.className = 'ghAssistantFileSide';
     dsidebar.innerHTML = hLink;
     diffContainer.appendChild(dsidebar);
+};
+
+GHA.attachStorageWipeButtons = function () {
+    var footer = document.getElementById('footer');
+
+    var div = document.createElement('div');
+    var buttonAll = document.createElement('button');
+    buttonAll.innerHTML = 'Wipe ALL GHA storage';
+    buttonAll.className = 'minibutton ghAssistantStorageWipe';
+    buttonAll.addEventListener('click', function () {
+        var msg = "Really want to wipe *all* the GH Assistant storage (" + GHA.Storage.checkSize() + " entries)?";
+        if( window.confirm(msg) ) {
+            GHA.Storage.wipeStorage();
+            window.alert("Done");
+        }
+    });
+
+    var repoId = GHA.Storage._repoId;
+    var prefix = GHA.Storage._prefix + repoId;
+
+    var buttonRepo = document.createElement('button');
+    buttonRepo.innerHTML = 'Wipe GH Assistant storage for this repo';
+    buttonRepo.className = 'minibutton ghAssistantStorageWipe';
+    buttonRepo.addEventListener('click', function () {
+        var msg = "Really want to wipe GH Assistant storage for " + repoId + " (" + GHA.Storage.checkSize(prefix) + " entries)?";
+        if( window.confirm(msg) ) {
+            GHA.Storage.wipeStorage(prefix);
+            window.alert("Done");
+        }
+    });
+
+    div.appendChild(buttonRepo);
+    div.appendChild(buttonAll);
+    footer.appendChild(div);
+};
+
+// =================================================================================================
+
+var GHAReviewStatusMarker = {
+    mark : function (diffContainerHeader, ghaClassName, ghaClassNameAlt) {
+        // 1 remove 'Ok' if we're setting 'Fail' and the opposite as well
+        // 2 add the class name for 'Fail' / 'Ok'
+        diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassNameAlt, '') + " " + ghaClassName;
+    },
+    unmark : function (diffContainerHeader, ghaClassName) {
+        // remove the added class name for 'Fail' / 'Ok'
+        diffContainerHeader.className = diffContainerHeader.className.replace(ghaClassName, '');
+    }
+};
+
+// =================================================================================================
+
+var GHALocalStorage = function () {
+
+    this._prefix = "__GHA__";
+
+    // @type {String} objectId either
+    this._objectId = null;
+    this._repoId = null;
+
+    this.init = function () {
+        var loc = document.location.pathname.replace(/\//g,'#'); // for easier regexes
+        var matches = loc.match(/^#([a-z0-9\-]+#[a-z0-9\-]+)#(commit|pull|compare)#([a-z0-9\-]+)/);
+        if (matches) {
+            this._objectId = matches[0];
+            this._repoId = "#" + matches[1]; // we want repoId to be a leading substring of objectId
+        } else {
+            console.error("Unable to create a local storage key for " + loc);
+            this.saveState = this.loadState = this.clearState = function () {};
+        }
+    };
+    /**
+     * @param {String} filePath
+     * @param {Integer} state 0 (fail), 1 (ok)
+     */
+    this.saveState = function (filePath, state) {
+        var sKey = this._getKeyFromObjId(filePath);
+        window.localStorage.setItem(sKey, state);
+    };
+
+    /**
+     * @param {String} filePath
+     */
+    this.loadState = function (filePath) {
+        var sKey = this._getKeyFromObjId(filePath);
+        var value = window.localStorage.getItem(sKey);
+        return value;
+    };
+
+    this.clearState = function (filePath) {
+        var sKey = this._getKeyFromObjId(filePath);
+        window.localStorage.removeItem(sKey);
+    };
+
+    this.wipeStorage = function (arbitraryPrefix) {
+        arbitraryPrefix = arbitraryPrefix || this._prefix;
+
+        for (var key in window.localStorage){
+            if(key.slice(0, arbitraryPrefix.length) === arbitraryPrefix) {
+                window.localStorage.removeItem(key);
+            }
+        }
+    };
+
+    this.checkSize = function (arbitraryPrefix) {
+        arbitraryPrefix = arbitraryPrefix || this._prefix;
+
+        var n = 0;
+        for (var key in window.localStorage){
+            if(key.slice(0, arbitraryPrefix.length) === arbitraryPrefix) {
+                n++
+            }
+        }
+        return n;
+    };
+
+    this._getKeyFromObjId = function (filePath) {
+        return this._prefix + this._objectId + filePath.replace(/\//g, '#');
+    }
+
+
+};
+
+// =================================================================================================
+
+var GHALocalStorageLoader = function (storage) {
+
+    this._storage = storage;
+
+    this.run = function () {
+        var diffContainers = GHA.getDiffContainers();
+
+        for(var i=0, ii = diffContainers.length; i<ii; i++) {
+            this.updateStateFromStorage(diffContainers[i]);
+        }
+    };
+
+    this.updateStateFromStorage = function(diffContainer) {
+        var diffContainerHeader = diffContainer.children[0];
+
+        var filePath = GHA._getFilePathFromDiffContainerHeader(diffContainerHeader);
+        var state = this._storage.loadState(filePath); // might be 0, 1 or undefined
+
+        if(state != null) {
+            var text = (state == 0) ? L10N.fail : L10N.ok;
+            var ghaClassName = 'ghAssistantButtonState' + text;
+            var ghaClassNameAlt = 'ghAssistantButtonState' + (text === L10N.ok ? L10N.fail : L10N.ok);
+
+            GHAReviewStatusMarker.mark (diffContainerHeader, ghaClassName, ghaClassNameAlt);
+        }
+    };
 };
 
 // =================================================================================================
@@ -402,6 +592,12 @@ var main = function () {
     }
 
     // let's go
+    GHA.Storage = new GHALocalStorage();
+    GHA.Storage.init();
+
+    var storageLoader = new GHALocalStorageLoader(GHA.Storage);
+    storageLoader.run();
+
     GHA.attachGlobalCss();
     GHA.attachToggleDisplayOnClickListeners();
     if(autoHide) {
@@ -412,6 +608,7 @@ var main = function () {
     GHA.attachCollapseExpandDiffsButton(autoHide);
 
     GHA.attachPerDiffFileFeatures();
+    GHA.attachStorageWipeButtons();
 };
 
 main();
