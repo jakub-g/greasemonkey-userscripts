@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name            GitHub code review assistant
-// @description     Toggle diff visibility per file in the commit. Mark reviewed files. Useful to review commits with lots of files changed.
+// @description     Toggle diff visibility per file in the commit. Mark reviewed files (preserves refreshes). Useful to review commits with lots of files changed.
 // @icon            https://github.com/favicon.ico
-// @version         0.9.0.20130418
+// @version         0.9.1.20130418
 // @namespace       http://jakub-g.github.com/
 // @author          http://jakub-g.github.com/
-// @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/togglableDiff.js
+// @downloadURL     https://raw.github.com/jakub-g/gh-code-review-assistant/master/ghAssistant.user.js
 // @userscriptsOrg  http://userscripts.org/scripts/show/153049
 // @grant           none
 // @include         http*://github.com/*/*/commit/*
@@ -44,7 +44,8 @@
 //  Refactor, comments
 // 0.9.0.20130418
 //  Local storage support to preserve the review across page refreshes!
-
+// 0.9.1.20130418
+//  Moved to separate GitHub repository
 
 // TODO
 // 1. On compare pages with really long diffs, it can take a few seconds to load everything.
