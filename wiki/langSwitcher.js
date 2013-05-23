@@ -61,7 +61,7 @@
    if(sLinkSecondLevelDomain !== null)
    {
       // get available translations by XPath
-      var aTranslations = document.evaluate("id('p-lang')/div/ul/li//a", document, null, XPathResult.ANY_TYPE,null);
+      var aTranslations = document.evaluate("//div[@id='p-lang']/div/ul/li/a", document, null, XPathResult.ANY_TYPE,null);
       var bFound = false;
       var sToAdd = '';
 
