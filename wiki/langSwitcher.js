@@ -2,7 +2,7 @@
 // @name            Wiki language switcher
 // @description     Easily switch Wikipedia language version with a heading link (see the screenshot). Retrieves links to other Wikipedia language versions (user-specified) for given article (if present), and places them beside main article heading on the top of the page. Can be both used as translator and quick link feature.
 // @icon            http://en.wikipedia.org/favicon.ico
-// @version         2012.10.20 (0.3.1)
+// @version         2013.05.23 (0.3.2)
 // @namespace       qbk
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/wiki/langSwitcher.js
@@ -61,7 +61,7 @@
    if(sLinkSecondLevelDomain !== null)
    {
       // get available translations by XPath
-      var aTranslations = document.evaluate("id('p-lang')/div/ul/li//a", document, null, XPathResult.ANY_TYPE,null);
+      var aTranslations = document.evaluate("//div[@id='p-lang']/div/ul/li/a", document, null, XPathResult.ANY_TYPE,null);
       var bFound = false;
       var sToAdd = '';
 
