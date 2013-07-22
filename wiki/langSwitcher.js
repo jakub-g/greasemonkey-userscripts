@@ -2,7 +2,7 @@
 // @name            Wiki language switcher
 // @description     Easily switch Wikipedia language version with a heading link (see the screenshot). Retrieves links to other Wikipedia language versions (user-specified) for given article (if present), and places them beside main article heading on the top of the page. Can be both used as translator and quick link feature.
 // @icon            http://en.wikipedia.org/favicon.ico
-// @version         2013.05.23 (0.3.2)
+// @version         2013.07.22 (0.3.3)
 // @namespace       qbk
 // @author          http://jakub-g.github.com/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/wiki/langSwitcher.js
@@ -15,7 +15,6 @@
 // @include         http*://*.wikibooks.org/wiki/*
 // @include         http*://*.wikiquote.org/wiki/*
 // @include         http*://*.wikinews.org/wiki/*
-// @include         http*://secure.wikimedia.org/*
 // ==/UserScript==
 
 (function(){
@@ -35,6 +34,7 @@
       return str.indexOf(prefix) === 0;
    }
 
+   var sCurrentPageLangCode = document.URL.match(/([a-z]+)\.[a-z]+\.[a-z]+/)[1];
    var bHttps = startsWith(document.URL, 'https');
    var sProtocol = bHttps ? 'https' : 'http';
 
@@ -77,7 +77,7 @@
             }
          }
 
-         if(bFound){
+         if(bFound && sTCurrLangCode != sCurrentPageLangCode){
             var sTCurrHref = oTranslation.href;
             if(bHttps){
                sTCurrHref = sTCurrHref.replace('http://','https://'); // due to bug in some https wiki versions other than https://secure.wikimedia.org
