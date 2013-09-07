@@ -2,12 +2,12 @@
 // @name            Google Translate Keyboard Everywhere
 // @description     25 keyboard shortcuts (with on-screen help) to use GT at rapid pace.
 // @icon            http://translate.google.com/favicon.ico
-// @version         1.0-20130224
+// @version         2.0.20130907
 // @namespace       http://jakub-g.github.com
 // @author          http://jakub-g.github.com
 // @license         Apache 2.0
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/googleTranslate/keyboardEverywhere.js
-// @userscriptsOrg  http://userscripts.org/scripts/show/...
+// @userscriptsOrg  http://userscripts.org/scripts/show/160211
 // @grant           none
 // @include         http://translate.google.tld/*
 // ==/UserScript==
@@ -55,6 +55,7 @@ var exports = { // container for globals
         helpersDisplayed : false // internal
     },
     settings : {
+        minMode : true, // hide unnecessary things; shrink and center. Useful in conjuction with Tile Tabs addon to have GT above/below the other window: https://addons.mozilla.org/pl/firefox/addon/tile-tabs/
         acceptRightAlt : false // default false, toggle to true if you don't use right alt + letter to type diacritics
     }
 };
@@ -162,7 +163,7 @@ exports.actions = {
         var charVal = String.fromCharCode(charCode);
         var idx = exports.listeners.changeLangsFromShortlist.indexOf(charVal);
 
-        var allElems = document.querySelectorAll('#gt-src-lang-sugg > div, #gt-tgt-lang-sugg > div');
+        var allElems = document.querySelectorAll('#gt-sl-sugg > div, #gt-tl-sugg > div');
 
         // reset style of all buttons - they keep hover class redundantly
         for(var i = 0; i < allElems.length; i++){
@@ -183,11 +184,11 @@ exports.actions = {
     },
 
     turnOnVKeyboard  : function() {
-        GTUtil.clickBySelector('.ita-container > a', 0);
+        GTUtil.clickBySelector('#gt-src-tools a', 0);
     },
 
     selectInputType : function () {
-        GTUtil.clickBySelector('.ita-container > a', 1);
+        GTUtil.clickBySelector('#gt-src-tools a', 1);
     },
 
     inPlay : function () {
@@ -238,7 +239,7 @@ var DisplayHelpUtil = {
 
     changeLangsFromShortlist : function () {
         var keys = exports.listeners.changeLangsFromShortlist;
-        var allElems = document.querySelectorAll('#gt-src-lang-sugg > div > div > div, #gt-tgt-lang-sugg > div > div > div');
+        var allElems = document.querySelectorAll('#gt-sl-sugg > div > div > div, #gt-tl-sugg > div > div > div');
 
         for(var i = 0; i < allElems.length; i++){
             var elem = allElems[i];
@@ -258,19 +259,19 @@ var DisplayHelpUtil = {
     },
 
     clearInputAndFocus : function clearInputAndFocus() {
-        GTUtil.writeKeysBySelector('.ita-container', arguments.callee.name, 'Focus & clear: ', 'float:right');
+        GTUtil.writeKeysBySelector('#gt-src-tools', arguments.callee.name, 'Focus & clear: ', 'float:right');
     },
     inputFocus : function inputFocus() {
-        GTUtil.writeKeysBySelector('.ita-container', arguments.callee.name, 'Focus: ', 'float:right');
+        GTUtil.writeKeysBySelector('#gt-src-tools', arguments.callee.name, 'Focus: ', 'float:right');
     },
 
     turnOnVKeyboard : function () {
-        var res = document.querySelectorAll('.ita-container > a');
+        var res = document.querySelectorAll('#itamenu a');
         if(res.length == 1) {
-            GTUtil.writeKeysBySelector('.ita-container', 'turnOnVKeyboard');
+            GTUtil.writeKeysBySelector('#gt-src-tools', 'turnOnVKeyboard');
         } else if (res.length == 2) {
-            GTUtil.writeKeysBySelector('.ita-container', 'turnOnVKeyboard');
-            GTUtil.writeKeysBySelector('.ita-container', 'selectInputType');
+            GTUtil.writeKeysBySelector('#gt-src-tools', 'turnOnVKeyboard');
+            GTUtil.writeKeysBySelector('#gt-src-tools', 'selectInputType');
         }
     },
 
@@ -385,6 +386,7 @@ var MouseUtil = {
 
 var GTUtil = {
     writeKeysBySelector : function (selector, fnName, additionalText, cssText) {
+        //if(selector == '#gt-src-tools') selector = '#gt-src-tools';
         var keys = exports.listeners[fnName];
 
         var el = document.querySelector(selector);
@@ -445,6 +447,44 @@ var GTUtil = {
 
 // =================================================================================================
 
+var MinModeUtil = {
+    _hideById : function(aIds) {
+        aIds.forEach(function(id){
+            document.getElementById(id).setAttribute('style', 'display: none !important');
+        });
+    },
+
+    _floatCenter : function(containerId, subContainersQuery) {
+        document.getElementById(containerId).style.cssText += 'text-align:center;'
+        var nlElems = document.querySelectorAll(subContainersQuery);
+        [].forEach.call(nlElems, function(elem) {
+            elem.style.cssText += 'display: inline-block; float:none;';
+        });
+    },
+
+    _squeezeAndCenter : function() {
+        document.getElementById('gt-form-c').style.cssText += 'margin: 0 auto; max-width: 800px;';
+        document.getElementById('gt-c').style.cssText += 'min-width: 400px;' // was causing problem on zoom-text-only ctrl++
+
+        setTimeout(function() {
+            document.getElementById('result_box').style.cssText += 'min-height:49px'; // 89px originally
+            document.getElementById('source').    style.cssText += 'height:65px'; // 105px originally
+        }, 1000);
+    },
+
+    activateMinMode : function() {
+        MinModeUtil._hideById(['gt-appname', 'gb', 'gt-ft', 'gt-ft-res']);
+        MinModeUtil._floatCenter('gt-langs', '#gt-langs > div');
+        MinModeUtil._squeezeAndCenter();
+
+        setTimeout(function(){
+            MinModeUtil._hideById(['gt-question-promo', 'select_document']);
+        }, 800)
+    }
+};
+
+// =================================================================================================
+
 var init = function (){
     exports.keycodeToFunctionMap = KeyUtil.mapKeyCodesToListeners(exports.listeners);
 
@@ -469,6 +509,10 @@ var init = function (){
     };
 
     DisplayHelpUtil._initialHelp();
+
+    if(exports.settings.minMode) {
+        MinModeUtil.activateMinMode();
+    }
 };
 
 init();
