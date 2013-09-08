@@ -2,7 +2,7 @@
 // @name            Google Translate Keyboard Everywhere
 // @description     25 keyboard shortcuts (with on-screen help) to use GT at rapid pace.
 // @icon            http://translate.google.com/favicon.ico
-// @version         2.0.20130907
+// @version         2.1.20130908
 // @namespace       http://jakub-g.github.com
 // @author          http://jakub-g.github.com
 // @license         Apache 2.0
@@ -11,6 +11,12 @@
 // @grant           none
 // @include         http://translate.google.tld/*
 // ==/UserScript==
+
+// History:
+// 1.0 initial version
+// 2.0 add min mode, fix not working things after HTML changes in GT
+// 2.1 prevent ALT+1, ALT+3 from hiding language selection popups (was hanging Firefox when clicked
+//       quickly several times); use ESC instead.
 
 //var console = unsafeWindow.console;
 
@@ -154,7 +160,47 @@ exports.actions = {
 
         // simulate a click on the target button
         var targetHtmlElem = document.getElementById(idxToIdMap[idx]);
-        MouseUtil.dispatchMouseEventsToHtmlElement(targetHtmlElem);
+
+        // Only allow to display the popup with Alt+1, Alt+3
+        // To dismiss it, you have to click ESC which is handled by GT itself
+        // (anyway, this is the only working way in Chrome)
+        //
+        // Without that, in Firefox, when user quickly clicks the same combination
+        // from the keyboard multiple times, the CPU starts spinning up to 100%
+        // Not sure how to work around it better...
+        if(idx == 0 || idx == 2) {
+            var pop1 = document.getElementById('gt-sl-gms-menu');
+            var pop2 = document.getElementById('gt-tl-gms-menu');
+        }
+        if((idx == 0 && pop1 && pop1.style.display != 'none') ||
+           (idx == 2 && pop2 && pop2.style.display != 'none')) {
+            return; // Click ESC from keyboard to hide the popup...
+
+            /*0. hide it directly: spins CPU to 100%
+            setTimeout(function() {
+                pop1.style.display = 'none';
+                pop2.style.display = 'none';
+            }, 100);
+            */
+
+            /* 1. simulate click outside the popup to hide it: this is prone to the same 100% CPU issue...
+            setTimeout(function() {
+                MouseUtil.dispatchMouseEventsToHtmlElement(document.getElementById('gt-c'));
+            }, 100);
+            */
+
+            /* 2. dispatching fake ESC doesn't hide the popup, even though event listeners are really invoked
+            setTimeout(function () {
+                var kbdEvent = document.createEvent("KeyboardEvent");
+                kbdEvent.initKeyEvent("keydown", true, true, window, false, false, false, false, 27, 0);
+                document.getElementById('gt-sl-gms').dispatchEvent(kbdEvent);
+            }, 100);
+            */
+        }else {
+            setTimeout(function() {
+                MouseUtil.dispatchMouseEventsToHtmlElement(targetHtmlElem);
+            }, 100);
+        }
     },
 
     changeLangsFromShortlist : function(keyCode) {
@@ -363,7 +409,9 @@ var MouseUtil = {
             return;
         }
 
-        htmlEl.click(); // for links
+        try {
+            htmlEl.click(); // for links
+        } catch(e){}
 
         // for non-links
         var clickEvent;
@@ -372,13 +420,15 @@ var MouseUtil = {
         clickEvent.initEvent('mouseover', true, true);
         htmlEl.dispatchEvent(clickEvent);
 
-        clickEvent = document.createEvent('MouseEvents');
-        clickEvent.initEvent('mousedown', true, true);
-        htmlEl.dispatchEvent(clickEvent);
+        setTimeout(function() {
+            clickEvent = document.createEvent('MouseEvents');
+            clickEvent.initEvent('mousedown', true, true);
+            htmlEl.dispatchEvent(clickEvent);
 
-        clickEvent = document.createEvent('MouseEvents');
-        clickEvent.initEvent('mouseup', true, true);
-        htmlEl.dispatchEvent(clickEvent);
+            clickEvent = document.createEvent('MouseEvents');
+            clickEvent.initEvent('mouseup', true, true);
+            htmlEl.dispatchEvent(clickEvent);
+        }, 200);
     }
 };
 
@@ -454,6 +504,10 @@ var MinModeUtil = {
         });
     },
 
+    _hideBySelector : function(selector) {
+        document.querySelector(selector).setAttribute('style', 'display: none !important');
+    },
+
     _floatCenter : function(containerId, subContainersQuery) {
         document.getElementById(containerId).style.cssText += 'text-align:center;'
         var nlElems = document.querySelectorAll(subContainersQuery);
@@ -474,11 +528,12 @@ var MinModeUtil = {
 
     activateMinMode : function() {
         MinModeUtil._hideById(['gt-appname', 'gb', 'gt-ft', 'gt-ft-res']);
+        MinModeUtil._hideBySelector('#gt-question-promo > span');
         MinModeUtil._floatCenter('gt-langs', '#gt-langs > div');
         MinModeUtil._squeezeAndCenter();
 
         setTimeout(function(){
-            MinModeUtil._hideById(['gt-question-promo', 'select_document']);
+            MinModeUtil._hideById(['select_document']);
         }, 800)
     }
 };
