@@ -2,7 +2,7 @@
 // @name            GitHub go to pull request branch from pull request
 // @description     Make the two SPANs with pullrequest-source and pullrequest-target user & branch names clickable. Click navigates to the list of commits in a given branch.
 // @icon            https://github.com/favicon.ico
-// @version         0.1.1.20140319
+// @version         0.1.2.20140319
 // @namespace       http://jakub-g.github.io/
 // @author          http://jakub-g.github.io/
 // @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/github/goToBranchFromPullRequest.user.js
@@ -29,6 +29,6 @@ attachLink(currDataNode, currUserName, currRepoName, currBranchName);
 
 var prUserName = prDataNode.children[0].textContent;
 var prBranchName = prDataNode.children[1].textContent;
-var prRepoName = document.querySelector('.actions > div > a[href^="/'+prUserName+'/"]').href.match("^https://github.com/"+prUserName+"/([a-zA-Z0-9-]+)/blob")[1];
+var prRepoName = document.querySelector('.actions > div > a[href^="/'+prUserName+'/"]').href.match("^(?:https://github.com)?/"+prUserName+"/([a-zA-Z0-9-]+)/")[1];
 
 attachLink(prDataNode, prUserName, prRepoName, prBranchName);
