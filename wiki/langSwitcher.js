@@ -5,7 +5,7 @@
 // @version         2020.02.27 (0.3.5)
 // @namespace       qbk
 // @author          http://jakub-g.github.com/
-// @downloadURL     https://raw.github.com/jakub-g/greasemonkey-userscripts/master/wiki/langSwitcher.user.js
+// @downloadURL     https://raw.githubusercontent.com/jakub-g/greasemonkey-userscripts/master/wiki/langSwitcher.user.js
 // @grant           none
 // @include         http*://*.wikipedia.org/wiki/*
 // @include         http*://*.wiktionary.org/wiki/*
