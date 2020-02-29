@@ -39,6 +39,7 @@
 
    var sRealSecondLevelDomain = null; // from URI
    var sLinkSecondLevelDomain = null; // from 'sRealSecondLevelDomain', but may later change in special case
+   var oHeading = document.getElementById('firstHeading'); // will be enriched by inter-language links
 
    // obtain current domain
    for(var i=0; i<asValidDomains.length; ++i)
@@ -56,8 +57,9 @@
       var sWikiProject = sRelativeUrl.substr(0,idxSlash);
       sLinkSecondLevelDomain = sWikiProject + '.org';
    }
-
-   if(sLinkSecondLevelDomain !== null)
+  
+   // modify only once: add child nodes to the original heading
+   if(!oHeading.children.length && sLinkSecondLevelDomain !== null)
    {
       // get available translations by XPath
       var aTranslations = document.evaluate("//div[@id='p-lang']/div/ul/li/a", document, null, XPathResult.ANY_TYPE,null);
